@@ -1,0 +1,46 @@
+# Exclude everything
+/*
+
+# Specific includes
+
+## Editorconfig
+!.editorconfig
+
+## Build System/Scripts
+!/.config
+!/global.json
+!/nuget.config
+!/Directory.Build.props
+!/Directory.Build.targets
+!/Directory.Packages.props
+!/build.sh
+
+## Markdowns
+!*.md
+!/LICENSE
+!/licenses
+
+## important Git files
+!.gitmodules
+!.gitignore
+!.gitattributes
+!.git-blame-ignore-revs
+
+## GitHub specific
+!.github/
+
+## Libraries
+!/libs
+
+## Solution
+!steam-kit-playground.sln
+
+### Projects
+!/ReAuthenticatePoC
+/ReAuthenticatePoC/[Bb]in
+/ReAuthenticatePoC/[Oo]bj
+
+# Explicit exceptions/ignores
+**.user
+**.local
+!**.template.*.user
