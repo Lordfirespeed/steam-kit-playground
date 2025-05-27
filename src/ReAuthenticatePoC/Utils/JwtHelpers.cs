@@ -1,9 +1,9 @@
 using System;
 using System.Text.Json;
 
-namespace ReAuthenticatePoC;
+namespace ReAuthenticatePoC.Utils;
 
-public static class Utils
+public static class JwtHelpers
 {
     public static string FormatJsonWebTokenContents( string token )
     {
