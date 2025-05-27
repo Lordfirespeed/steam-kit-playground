@@ -36,9 +36,9 @@
 !steam-kit-playground.sln
 
 ### Projects
-!/ReAuthenticatePoC
-/ReAuthenticatePoC/[Bb]in
-/ReAuthenticatePoC/[Oo]bj
+!/src/
+/src/*/[Bb]in
+/src/*/[Oo]bj
 
 # Explicit exceptions/ignores
 **.user
