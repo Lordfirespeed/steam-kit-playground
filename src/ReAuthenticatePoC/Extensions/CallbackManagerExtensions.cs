@@ -7,6 +7,8 @@ namespace ReAuthenticatePoC.Extensions;
 
 public static class CallbackManagerExtensions
 {
+    #region `Subscribe` methods for `async Task`/`async ValueTask` subscribers
+
     private sealed class CancellingDisposable(CancellationTokenSource cts, IDisposable? disposable = null) : IDisposable
     {
         private bool _disposed = false;
@@ -66,4 +68,6 @@ public static class CallbackManagerExtensions
     {
         return Subscribe<TCallback>(manager, jobId, callback => callbackFunc(callback).AsTask());
     }
+
+    #endregion
 }
