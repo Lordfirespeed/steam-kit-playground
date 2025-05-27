@@ -8,6 +8,7 @@
     <ItemGroup>
         <PackageReference Include="SteamKit2" />
         <PackageReference Include="QRCoder" />
+        <PackageReference Include="ReadLine" />
     </ItemGroup>
 
 </Project>
