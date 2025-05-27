@@ -70,4 +70,47 @@ public static class CallbackManagerExtensions
     }
 
     #endregion
+
+    #region `Run` loop methods
+
+    public static void RunForever(
+        this CallbackManager manager,
+        TimeSpan interval,
+        CancellationToken cancellationToken = default
+    ) {
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+            manager.RunWaitCallbacks(interval);
+        }
+        // ReSharper disable once FunctionNeverReturns
+    }
+
+    public static async ValueTask RunForeverAsync(
+        this CallbackManager manager,
+        CancellationToken cancellationToken = default
+    ) {
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+            await manager.RunWaitCallbackAsync(cancellationToken);
+        }
+        // ReSharper disable once FunctionNeverReturns
+    }
+
+    public static async ValueTask RunUntil(
+        this CallbackManager manager,
+        Task untilTask,
+        CancellationToken cancellationToken = default
+    ) {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var untilTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var runTask = Task.Run(
+            async () => await manager.RunForeverAsync(cancellationToken: untilTokenSource.Token),
+            untilTokenSource.Token
+        );
+        await untilTask;
+        await untilTokenSource.CancelAsync();
+        await runTask.SuppressingCancellation();
+    }
+
+    #endregion
 }
