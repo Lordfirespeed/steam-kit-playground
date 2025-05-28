@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using SteamKit2;
@@ -16,8 +17,14 @@ public class ProgramState : IDisposable
     public CallbackManager Manager { get; }
     public SteamUser SteamUser { get; }
 
+    [MemberNotNullWhen(true, nameof(AccountName), nameof(TokenSet))]
+    public bool HasAuthenticated { get; set; } = false;
     public string? AccountName { get; set; }
     public TokenSet? TokenSet { get; set; }
+
+    [MemberNotNullWhen(true, nameof(ClientSteamId))]
+    public bool IsLoggedOn { get; set; } = false;
+    public SteamID? ClientSteamId { get; set; }
 
     private IDisposable[] _subscriptions;
 

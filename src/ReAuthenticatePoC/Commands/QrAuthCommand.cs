@@ -36,6 +36,7 @@ public class QrAuthCommand(ProgramState state)
         }
         state.AccountName = authResult.AccountName;
         state.TokenSet = new TokenSet(authResult.AccessToken, authResult.RefreshToken);
+        state.HasAuthenticated = true;
         Console.WriteLine("Authentication successful, retrieved TokenSet");
     }
 
