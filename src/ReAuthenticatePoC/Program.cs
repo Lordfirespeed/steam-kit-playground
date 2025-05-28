@@ -25,7 +25,7 @@ while ( state.IsRunning ) {
             await new LogOnCommand(state).Run(state.RunToken);
             break;
         case "log-off":
-            await new LogOffCommand(state).Run(state.RunToken);
+            await new LogOffCommand(state).Run(state.RunToken).SuppressingCancellation();
             break;
         case "disconnect":
             state.SteamClient.Disconnect();
