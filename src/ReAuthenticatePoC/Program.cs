@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using ReAuthenticatePoC;
+using ReAuthenticatePoC.Commands;
 using ReAuthenticatePoC.Extensions;
 using SteamKit2;
 
@@ -18,7 +19,7 @@ while ( state.IsRunning ) {
     var input = ReadLine.Read("> ");
     switch (input) {
         case "qr-auth":
-            Console.WriteLine("do qr auth");
+            await new QrAuthCommand(state).Run();
             break;
         case "disconnect":
             state.SteamClient.Disconnect();
