@@ -16,6 +16,7 @@ var state = new ProgramState();
 }
 
 while ( state.IsRunning ) {
+    ReadLine.HistoryEnabled = true;
     var input = ReadLine.Read("> ");
     switch (input) {
         case "qr-auth":
