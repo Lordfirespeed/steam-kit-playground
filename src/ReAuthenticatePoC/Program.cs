@@ -19,7 +19,13 @@ while ( state.IsRunning ) {
     var input = ReadLine.Read("> ");
     switch (input) {
         case "qr-auth":
-            await new QrAuthCommand(state).Run();
+            await new QrAuthCommand(state).Run(state.RunToken);
+            break;
+        case "log-on":
+            await new LogOnCommand(state).Run(state.RunToken);
+            break;
+        case "log-off":
+            await new LogOffCommand(state).Run(state.RunToken);
             break;
         case "disconnect":
             state.SteamClient.Disconnect();
