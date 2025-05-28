@@ -35,6 +35,7 @@ public class ProgramState : IDisposable
         SteamUser = SteamClient.GetHandler<SteamUser>() ?? throw new InvalidOperationException();
         _subscriptions = [
             Manager.Subscribe<SteamClient.DisconnectedCallback>(OnDisconnected),
+            Manager.Subscribe<SteamUser.LoggedOffCallback>(OnLoggedOff),
         ];
     }
 
@@ -42,6 +43,13 @@ public class ProgramState : IDisposable
     {
         Console.WriteLine("Disconnected from Steam");
         await Stop();
+    }
+
+    private async ValueTask OnLoggedOff(SteamUser.LoggedOffCallback callback)
+    {
+        Console.WriteLine($"Logged off: {callback.Result}");
+        IsLoggedOn = false;
+        ClientSteamId = null;
     }
 
     public async ValueTask Stop()
