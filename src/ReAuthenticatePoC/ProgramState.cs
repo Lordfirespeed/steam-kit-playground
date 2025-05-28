@@ -16,6 +16,7 @@ public class ProgramState : IDisposable
     public CallbackManager Manager { get; }
     public SteamUser SteamUser { get; }
 
+    public string? AccountName { get; set; }
     public TokenSet? TokenSet { get; set; }
 
     private IDisposable[] _subscriptions;

@@ -34,6 +34,7 @@ public class QrAuthCommand(ProgramState state)
 
             authResult = await authSession.PollingWaitForResultAsync(cancellationToken);
         }
+        state.AccountName = authResult.AccountName;
         state.TokenSet = new TokenSet(authResult.AccessToken, authResult.RefreshToken);
         Console.WriteLine("Authentication successful, retrieved TokenSet");
     }
