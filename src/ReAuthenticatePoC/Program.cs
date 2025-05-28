@@ -21,6 +21,12 @@ while ( state.IsRunning ) {
         case "qr-auth":
             await new QrAuthCommand(state).Run(state.RunToken);
             break;
+        case "save-auth":
+            await state.SaveAuthenticationData(state.RunToken);
+            break;
+        case "load-auth":
+            await state.LoadAuthenticationData(state.RunToken);
+            break;
         case "log-on":
             await new LogOnCommand(state).Run(state.RunToken);
             break;
