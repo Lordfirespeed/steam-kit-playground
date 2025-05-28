@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using ReAuthenticatePoC;
 using ReAuthenticatePoC.Commands;
 using ReAuthenticatePoC.Extensions;
+using ReAuthenticatePoC.Utils;
 using SteamKit2;
 
 var state = new ProgramState();
@@ -33,6 +34,11 @@ while ( state.IsRunning ) {
             break;
         case "log-off":
             await new LogOffCommand(state).Run(state.RunToken).SuppressingCancellation();
+            break;
+        case "print-tokens":
+            if (!state.HasAuthenticated) throw new InvalidOperationException("Not authenticated");
+            Console.WriteLine($"access: {JwtHelpers.FormatJsonWebTokenContents(state.TokenSet.AccessToken)}");
+            Console.WriteLine($"refresh: {JwtHelpers.FormatJsonWebTokenContents(state.TokenSet.RefreshToken)}");
             break;
         case "disconnect":
             state.SteamClient.Disconnect();
