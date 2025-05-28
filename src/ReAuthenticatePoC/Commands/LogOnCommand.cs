@@ -17,6 +17,7 @@ public class LogOnCommand(ProgramState state)
         using var _ = state.Manager.Subscribe<SteamUser.LoggedOnCallback>(loggedOnTaskSource.SetResult);
         Console.WriteLine("Logging on...");
         state.SteamUser.LogOn(new SteamUser.LogOnDetails {
+            LoginID = (uint)new Random().Next(int.MinValue, int.MaxValue),
             Username = state.AccountName,
             AccessToken = state.TokenSet?.RefreshToken,
             ShouldRememberPassword = true,
