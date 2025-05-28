@@ -107,9 +107,13 @@ public static class CallbackManagerExtensions
             async () => await manager.RunForeverAsync(cancellationToken: untilTokenSource.Token),
             untilTokenSource.Token
         );
-        await untilTask;
-        await untilTokenSource.CancelAsync();
-        await runTask.SuppressingCancellation();
+        try {
+            await untilTask.WaitAsync(cancellationToken);
+        }
+        finally {
+            await untilTokenSource.CancelAsync();
+            await runTask.SuppressingCancellation();
+        }
     }
 
     #endregion
