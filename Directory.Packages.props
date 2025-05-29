@@ -35,6 +35,7 @@
         <PackageVersion Include="QRCoder" Version="[1.*, 2.0.0)" />
         <PackageVersion Include="SteamKit2" Version="[3.*, 4.0.0)" />
         <PackageVersion Include="ReadLine" Version="[2.*, 3.0.0)" />
+        <PackageVersion Include="Mono.Posix" Version="[7.*-*, 8.0.0)" />
         <!-- Serilog + pinned transitive dependencies -->
         <PackageVersion Include="Serilog" Version="[4.*, 5.0.0)" />
         <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="$(DotNetPackageVersionFloat)" />

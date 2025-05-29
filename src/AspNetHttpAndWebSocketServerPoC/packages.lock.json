@@ -7,6 +7,20 @@
         "requested": "[4.*, 5.0.0)",
         "resolved": "4.3.0",
         "contentHash": "YNVAW3loCFW4kTwensApaZUl+7xREK75QQNOFSbsbXx2sCSm9/IHBjUHsJGn3u0UA5r/sAqrdYBNUlOFfLhUrA=="
+      },
+      "Mono.Posix": {
+        "type": "Direct",
+        "requested": "[7.*-*, 8.0.0)",
+        "resolved": "7.1.0-final.1.21458.1",
+        "contentHash": "xhil/0zRkA2MrkyMZXC3dPSDWOhq6YD0vYGl1VnBbjsEZfLQCu7+mJZ/ftnOd0r4qmeHVeNuW6Pt33NoxO671A==",
+        "dependencies": {
+          "Mono.Unix": "7.1.0-final.1.21458.1"
+        }
+      },
+      "Mono.Unix": {
+        "type": "Transitive",
+        "resolved": "7.1.0-final.1.21458.1",
+        "contentHash": "Rhxz4A7By8Q0wEgDqR+mioDsYXGrcYMYPiWE9bSaUKMpG8yAGArhetEQV5Ms6KhKCLdQTlPYLBKPZYoKbAvT/g=="
       }
     }
   }

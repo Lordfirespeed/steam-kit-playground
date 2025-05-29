@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Mono.Posix" />
     </ItemGroup>
 
 </Project>
