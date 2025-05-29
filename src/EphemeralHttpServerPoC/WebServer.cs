@@ -2,9 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using EphemeralHttpServerPoC.Extensions;
@@ -23,12 +21,7 @@ public class WebServer
 
     async Task HandleRequest(HttpListenerContext ctx, CancellationToken cancellationToken = default)
     {
-        var responseContent = "Hello, world!";
-        var responseContentBytes = Encoding.UTF8.GetBytes(responseContent);
-        ctx.Response.ContentType = "text/plain";
-        ctx.Response.ContentLength64 = responseContentBytes.LongLength;
-        await ctx.Response.OutputStream.WriteAsync(responseContentBytes, cancellationToken);
-        ctx.Response.Close();
+        await ctx.Response.SendPlain("Hello, world!", cancellationToken: cancellationToken);
     }
 
     async Task HandleRequestTrackingProgress(HttpListenerContext ctx, CancellationToken cancellationToken = default)
