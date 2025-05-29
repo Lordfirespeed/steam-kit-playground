@@ -6,7 +6,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InitialAuthenticatePoC", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralHttpServerPoC", "src\EphemeralHttpServerPoC\EphemeralHttpServerPoC.csproj", "{7CFD5372-F9D5-47EC-AC1F-9A18919E64BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetEphemeralHttpServerPoC", "src\AspNetEphemeralHttpServerPoC\AspNetEphemeralHttpServerPoC.csproj", "{FDA7038E-C58E-48CA-9F49-EFF5BB1D8227}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetHttpAndWebSocketServerPoC", "src\AspNetHttpAndWebSocketServerPoC\AspNetHttpAndWebSocketServerPoC.csproj", "{FDA7038E-C58E-48CA-9F49-EFF5BB1D8227}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
