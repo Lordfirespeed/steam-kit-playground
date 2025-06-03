@@ -2,16 +2,14 @@
 
 using System;
 using System.Threading;
+using AspNetEphemeralHttpServerPoC;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
-using Mono.Unix;
-
-var socketInfo = new UnixFileInfo("/tmp/steam-auth.sock");
 
 var builder = WebApplication.CreateSlimBuilder();
 builder.WebHost.ConfigureKestrel(options => {
-    options.ListenUnixSocket(socketInfo.FullName);
+    options.ListenUnixSocket(Config.SocketInfo.FullName);
 });
 var app = builder.Build();
 
@@ -21,5 +19,6 @@ var cancellationSource = new CancellationTokenSource();
 cancellationSource.CancelAfter(new TimeSpan(hours: 0, minutes: 1, seconds: 0));
 
 var runTask = app.RunAsync(cancellationSource.Token);
+Config.ConfigureSocket();
 
 await runTask;
