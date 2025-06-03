@@ -16,7 +16,7 @@ var app = builder.Build();
 app.MapGet("/", () => "Hello World!");
 
 var cancellationSource = new CancellationTokenSource();
-cancellationSource.CancelAfter(new TimeSpan(hours: 0, minutes: 1, seconds: 0));
+Console.CancelKeyPress += (_, args) => cancellationSource.Cancel();
 
 var runTask = app.RunAsync(cancellationSource.Token);
 Config.ConfigureSocket();
