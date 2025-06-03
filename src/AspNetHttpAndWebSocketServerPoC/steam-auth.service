@@ -1,0 +1,18 @@
+[Unit]
+Description=Steam Credential Provider
+
+[Service]
+User=steam-auth
+UMask=0002
+RuntimeDirectory=steam-auth
+RuntimeDirectoryMode=0775
+Environment=APP_ENV=staging
+ExecStart=dotnet run --no-build --project /home/steam-auth/projects/steam-kit-playground/src/AspNetHttpAndWebSocketServerPoC/
+Type=simple
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=60
+Type=exec
+
+[Install]
+WantedBy=default.target
