@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using AspNetEphemeralHttpServerPoC;
 using Microsoft.AspNetCore.Builder;
@@ -16,9 +17,14 @@ var app = builder.Build();
 app.MapGet("/", () => "Hello World!");
 
 var cancellationSource = new CancellationTokenSource();
-Console.CancelKeyPress += (_, args) => cancellationSource.Cancel();
+var cancel = (PosixSignalContext ctx) => {
+    Console.WriteLine($"Got ${ctx.Signal}");
+    cancellationSource.Cancel();
+};
+using (PosixSignalRegistration.Create(PosixSignal.SIGINT, cancel))
+using (PosixSignalRegistration.Create(PosixSignal.SIGTERM, cancel)) {
+    var runTask = app.RunAsync(cancellationSource.Token);
+    Config.ConfigureSocket();
 
-var runTask = app.RunAsync(cancellationSource.Token);
-Config.ConfigureSocket();
-
-await runTask;
+    await runTask;
+}
