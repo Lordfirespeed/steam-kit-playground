@@ -168,27 +168,17 @@ public class PosixAcl
     public void ModifyUser(UnixUserInfo user, AclPermissions permissions)
     {
         if (_entries.Count == 0) _entries.AddRange(GetImplicitAcl());
+        var (matches, index) = FindEntryIndex(AclTag.User, (UInt32)user.UserId);
 
-        int matchingEntryIndex = -1;
-        int cursor;
-        for (cursor = 0; cursor < _entries.Count; ++cursor) {
-            var entry = _entries[cursor];
-            if (entry.EntryTag < AclTag.User) continue;
-            if (entry.EntryTag > AclTag.User) break;
-            if (entry.EntryId != user.UserId) continue;
-            matchingEntryIndex = cursor;
-            break;
-        }
-
-        if (matchingEntryIndex == -1) {
+        if (!matches) {
             // insert a new ACL entry
-            _entries.Insert(cursor, new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)user.UserId));
+            _entries.Insert(index, new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)user.UserId));
             Flush();
             return;
         }
 
         // replace existing ACL entry
-        _entries[matchingEntryIndex] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)user.UserId);
+        _entries[index] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)user.UserId);
         Flush();
     }
 
@@ -202,27 +192,17 @@ public class PosixAcl
     public void ModifyGroup(UnixGroupInfo group, AclPermissions permissions)
     {
         if (_entries.Count == 0) _entries.AddRange(GetImplicitAcl());
+        var (matches, index) = FindEntryIndex(AclTag.Group, (UInt32)group.GroupId);
 
-        int matchingEntryIndex = -1;
-        int cursor;
-        for (cursor = 0; cursor < _entries.Count; ++cursor) {
-            var entry = _entries[cursor];
-            if (entry.EntryTag < AclTag.Group) continue;
-            if (entry.EntryTag > AclTag.Group) break;
-            if (entry.EntryId != group.GroupId) continue;
-            matchingEntryIndex = cursor;
-            break;
-        }
-
-        if (matchingEntryIndex == -1) {
+        if (!matches) {
             // insert a new ACL entry
-            _entries.Insert(cursor, new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId));
+            _entries.Insert(index, new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId));
             Flush();
             return;
         }
 
         // replace existing ACL entry
-        _entries[matchingEntryIndex] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId);
+        _entries[index] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId);
         Flush();
     }
 
@@ -231,6 +211,27 @@ public class PosixAcl
         var maskedPermissions = _node.FileAccessPermissions & (FileAccessPermissions.AllPermissions ^ FileAccessPermissions.OtherReadWriteExecute);
         _node.FileAccessPermissions = maskedPermissions | (FileAccessPermissions)permissions;
         Refresh();
+    }
+
+    /**
+     * Returns a tuple of (bool matches, int index).
+     * When 'matches' is true, 'index' is the index of the matching entry in _entries.
+     * When 'matches' is false, 'index' is the index at which a matching entry should be inserted into _entries.
+     */
+    private (bool matches, int index) FindEntryIndex(AclTag tag, UInt32 id)
+    {
+        bool matches = false;
+        int cursor;
+        for (cursor = 0; cursor < _entries.Count; ++cursor) {
+            var entry = _entries[cursor];
+            if (entry.EntryTag < tag) continue;
+            if (entry.EntryTag > tag) break;
+            if (entry.EntryId < id) continue;
+            if (entry.EntryId > id) break;
+            matches = true;
+            break;
+        }
+        return (matches, cursor);
     }
 
     private IList<PosixAclXattrEntry> GetImplicitAcl()
