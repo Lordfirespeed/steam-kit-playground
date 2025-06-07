@@ -1,4 +1,5 @@
 using System;
+using AspNetEphemeralHttpServerPoC.Extensions;
 using Mono.Unix;
 
 namespace AspNetEphemeralHttpServerPoC;
@@ -31,9 +32,15 @@ internal static class Config
 
     public static void ConfigureSocket()
     {
-        // in production, the process owner will be a dedicated service user, and the `nginx` user will belong to the service user group
-        if (AppEnv is not AppEnv.Development) return;
-        // in development, the executor should have admin privileges and/or belong to the nginx group, so chown the socket
-        SocketInfo.SetOwner(SocketInfo.OwnerUser, new UnixGroupInfo("nginx"));
+        if (AppEnv is AppEnv.Development) {
+            // in development, the executor should have admin privileges and/or belong to the nginx group, so chown the socket
+            SocketInfo.SetOwner(SocketInfo.OwnerUser, new UnixGroupInfo("nginx"));
+            return;
+        }
+
+        // in production, the process owner will be a dedicated service user
+        // give `nginx` access to the socket via ACLs
+        SocketInfo.GetFileAccessControl()
+            .ModifyUserAccess(new UnixUserInfo("nginx"), AclPermissions.Read | AclPermissions.Write);
     }
 }
