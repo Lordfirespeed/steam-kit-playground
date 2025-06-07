@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using Mono.Unix;
 using Native = Mono.Unix.Native;
 
@@ -110,60 +109,70 @@ readonly struct PosixAclXattrHeader(UInt32 pAclVersion)
     public UInt32 AclVersion => pAclVersion;
 }
 
-public class UnixFileAccessControl
+public class PosixAcl
 {
-    private const string PosixAccessAclXattrName = "system.posix_acl_access";
-    private const string PosixDefaultAclXattrName = "system.posix_acl_default";
     private const UInt32 PosixAclXattrVersion = 2;
 
-    private UnixFileSystemInfo _fileSystemInfo;
-    private readonly List<PosixAclXattrEntry> _accessAcl;
-    private readonly List<PosixAclXattrEntry> _defaultAcl;
-    public IList<PosixAclXattrEntry> AccessAcl { get; }
-    public IList<PosixAclXattrEntry> DefaultAcl { get; }
+    private readonly UnixFileSystemInfo _node;
+    private readonly string _xattrName;
 
-    public UnixFileAccessControl(UnixFileSystemInfo fileSystemInfo)
+    private PosixAclXattrHeader _header;
+    private readonly List<PosixAclXattrEntry> _entries;
+    public IList<PosixAclXattrEntry> Entries { get; }
+
+    internal PosixAcl(UnixFileSystemInfo node, string xattrName)
     {
-        _fileSystemInfo = fileSystemInfo;
-        _accessAcl = GetFileAccessControlList(fileSystemInfo.FullName, PosixAccessAclXattrName);
-        _defaultAcl = GetFileAccessControlList(fileSystemInfo.FullName, PosixDefaultAclXattrName);
-        AccessAcl = new ReadOnlyCollection<PosixAclXattrEntry>(_accessAcl);
-        DefaultAcl = new ReadOnlyCollection<PosixAclXattrEntry>(_defaultAcl);
+        _node = node;
+        _xattrName = xattrName;
+        _entries = new List<PosixAclXattrEntry>();
+        Entries = new ReadOnlyCollection<PosixAclXattrEntry>(_entries);
     }
 
-    private IList<PosixAclXattrEntry> GetImplicitAcl()
+    public void Refresh()
     {
-        var userOwnerPermissions = (AclPermissions)(((int)_fileSystemInfo.FileAccessPermissions >> 6) & 0b111);
-        var groupOwnerPermissions = (AclPermissions)(((int)_fileSystemInfo.FileAccessPermissions >> 3) & 0b111);
-        var otherPermissions = (AclPermissions)(((int)_fileSystemInfo.FileAccessPermissions >> 0) & 0b111);
-
-        return [
-            new PosixAclXattrEntry(AclTag.UserObject, userOwnerPermissions, PosixAclXattrEntry.AclUndefinedId),
-            new PosixAclXattrEntry(AclTag.GroupObject, AclPermissions.All, PosixAclXattrEntry.AclUndefinedId),
-            new PosixAclXattrEntry(AclTag.Mask, groupOwnerPermissions, PosixAclXattrEntry.AclUndefinedId),
-            new PosixAclXattrEntry(AclTag.Other, otherPermissions, PosixAclXattrEntry.AclUndefinedId),
-        ];
+        _entries.Clear();
+        var aclByteBufferLength = Native.Syscall.getxattr(_node.FullName, _xattrName, out var aclByteBuffer);
+        if (aclByteBufferLength < 0) return;
+        using var aclByteStream = new MemoryStream(aclByteBuffer, false);
+        using var aclByteReader = new BinaryReader(aclByteStream);
+        _header = aclByteReader.ReadPosixAclXattrHeader();
+        Debug.Assert(_header.AclVersion == PosixAclXattrVersion);
+        while (aclByteReader.PeekChar() > 0) {
+            _entries.Add(aclByteReader.ReadPosixAclXattrEntry());
+        }
     }
 
-    private void FlushAccessAcl() => SetFileAccessControlList(_fileSystemInfo.FullName, PosixAccessAclXattrName, AccessAcl);
-    private void RefreshProtection() => _fileSystemInfo.Protection = _fileSystemInfo.Protection;  // chmod() syscall
-
-    public void ModifyOwnerUserAccess(AclPermissions permissions)
+    public byte[] ToXattrBytes()
     {
-        var maskedPermissions = _fileSystemInfo.FileAccessPermissions & (FileAccessPermissions.AllPermissions ^ FileAccessPermissions.UserReadWriteExecute);
-        _fileSystemInfo.FileAccessPermissions = maskedPermissions | (FileAccessPermissions)((int)permissions << 6);
-        _accessAcl.Clear();
-        _accessAcl.AddRange(GetFileAccessControlList(_fileSystemInfo.FullName, PosixAccessAclXattrName));
+        using var aclByteStream = new MemoryStream();
+        using var aclByteWriter = new BinaryWriter(aclByteStream);
+        aclByteWriter.Write(_header);
+        foreach (var entry in _entries)
+            aclByteWriter.Write(entry);
+        return aclByteStream.ToArray();
     }
 
-    public void ModifyUserAccess(UnixUserInfo user, AclPermissions permissions)
+    public void Flush()
     {
-        if (_accessAcl.Count == 0) _accessAcl.AddRange(GetImplicitAcl());
+        var result = Native.Syscall.setxattr(_node.FullName, _xattrName, ToXattrBytes());
+        if (result != 0) throw new Exception($"setxattr returned exit code {result}");
+    }
+
+    public void ModifyOwnerUser(AclPermissions permissions)
+    {
+        var maskedPermissions = _node.FileAccessPermissions & (FileAccessPermissions.AllPermissions ^ FileAccessPermissions.UserReadWriteExecute);
+        _node.FileAccessPermissions = maskedPermissions | (FileAccessPermissions)((int)permissions << 6);
+        Refresh();
+    }
+
+    public void ModifyUser(UnixUserInfo user, AclPermissions permissions)
+    {
+        if (_entries.Count == 0) _entries.AddRange(GetImplicitAcl());
 
         int matchingEntryIndex = -1;
         int cursor;
-        for (cursor = 0; cursor < _accessAcl.Count; ++cursor) {
-            var entry = _accessAcl[cursor];
+        for (cursor = 0; cursor < _entries.Count; ++cursor) {
+            var entry = _entries[cursor];
             if (entry.EntryTag < AclTag.User) continue;
             if (entry.EntryTag > AclTag.User) break;
             if (entry.EntryId != user.UserId) continue;
@@ -173,34 +182,31 @@ public class UnixFileAccessControl
 
         if (matchingEntryIndex == -1) {
             // insert a new ACL entry
-            _accessAcl.Insert(cursor, new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)user.UserId));
-            FlushAccessAcl();
-            RefreshProtection();
+            _entries.Insert(cursor, new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)user.UserId));
+            Flush();
             return;
         }
 
         // replace existing ACL entry
-        _accessAcl[matchingEntryIndex] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)user.UserId);
-        FlushAccessAcl();
-        RefreshProtection();
+        _entries[matchingEntryIndex] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)user.UserId);
+        Flush();
     }
 
-    public void ModifyOwnerGroupAccess(AclPermissions permissions)
+    public void ModifyOwnerGroup(AclPermissions permissions)
     {
-        var maskedPermissions = _fileSystemInfo.FileAccessPermissions & (FileAccessPermissions.AllPermissions ^ FileAccessPermissions.GroupReadWriteExecute);
-        _fileSystemInfo.FileAccessPermissions = maskedPermissions | (FileAccessPermissions)((int)permissions << 3);
-        _accessAcl.Clear();
-        _accessAcl.AddRange(GetFileAccessControlList(_fileSystemInfo.FullName, PosixAccessAclXattrName));
+        var maskedPermissions = _node.FileAccessPermissions & (FileAccessPermissions.AllPermissions ^ FileAccessPermissions.GroupReadWriteExecute);
+        _node.FileAccessPermissions = maskedPermissions | (FileAccessPermissions)((int)permissions << 3);
+        Refresh();
     }
 
-    public void ModifyGroupAccess(UnixGroupInfo group, AclPermissions permissions)
+    public void ModifyGroup(UnixGroupInfo group, AclPermissions permissions)
     {
-        if (_accessAcl.Count == 0) _accessAcl.AddRange(GetImplicitAcl());
+        if (_entries.Count == 0) _entries.AddRange(GetImplicitAcl());
 
         int matchingEntryIndex = -1;
         int cursor;
-        for (cursor = 0; cursor < _accessAcl.Count; ++cursor) {
-            var entry = _accessAcl[cursor];
+        for (cursor = 0; cursor < _entries.Count; ++cursor) {
+            var entry = _entries[cursor];
             if (entry.EntryTag < AclTag.Group) continue;
             if (entry.EntryTag > AclTag.Group) break;
             if (entry.EntryId != group.GroupId) continue;
@@ -210,51 +216,50 @@ public class UnixFileAccessControl
 
         if (matchingEntryIndex == -1) {
             // insert a new ACL entry
-            _accessAcl.Insert(cursor, new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId));
-            FlushAccessAcl();
-            RefreshProtection();
+            _entries.Insert(cursor, new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId));
+            Flush();
             return;
         }
 
         // replace existing ACL entry
-        _accessAcl[matchingEntryIndex] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId);
-        FlushAccessAcl();
-        RefreshProtection();
+        _entries[matchingEntryIndex] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId);
+        Flush();
     }
 
-    public void ModifyOtherAccess(AclPermissions permissions)
+    public void ModifyOther(AclPermissions permissions)
     {
-        var maskedPermissions = _fileSystemInfo.FileAccessPermissions & (FileAccessPermissions.AllPermissions ^ FileAccessPermissions.OtherReadWriteExecute);
-        _fileSystemInfo.FileAccessPermissions = maskedPermissions | (FileAccessPermissions)permissions;
-        _accessAcl.Clear();
-        _accessAcl.AddRange(GetFileAccessControlList(_fileSystemInfo.FullName, PosixAccessAclXattrName));
+        var maskedPermissions = _node.FileAccessPermissions & (FileAccessPermissions.AllPermissions ^ FileAccessPermissions.OtherReadWriteExecute);
+        _node.FileAccessPermissions = maskedPermissions | (FileAccessPermissions)permissions;
+        Refresh();
     }
 
-    private static List<PosixAclXattrEntry> GetFileAccessControlList(string path, string xattrName)
+    private IList<PosixAclXattrEntry> GetImplicitAcl()
     {
-        var aclByteBufferLength = Native.Syscall.getxattr(path, xattrName, out var aclByteBuffer);
-        if (aclByteBufferLength < 0) return [];
-        using var aclByteStream = new MemoryStream(aclByteBuffer, false);
-        using var aclByteReader = new BinaryReader(aclByteStream);
-        var header = aclByteReader.ReadPosixAclXattrHeader();
-        Debug.Assert(header.AclVersion == PosixAclXattrVersion);
-        var acl = new List<PosixAclXattrEntry>();
-        while (aclByteReader.PeekChar() > 0) {
-            acl.Add(aclByteReader.ReadPosixAclXattrEntry());
-        }
-        return acl;
-    }
+        var userOwnerPermissions = (AclPermissions)((int)(_node.FileAccessPermissions & FileAccessPermissions.UserReadWriteExecute) >> 6);
+        var groupOwnerPermissions = (AclPermissions)((int)(_node.FileAccessPermissions & FileAccessPermissions.GroupReadWriteExecute) >> 3);
+        var otherPermissions = (AclPermissions)((int)(_node.FileAccessPermissions & FileAccessPermissions.OtherReadWriteExecute) >> 0);
 
-    private static void SetFileAccessControlList(string path, string xattrName, IList<PosixAclXattrEntry> acl)
+        return [
+            new PosixAclXattrEntry(AclTag.UserObject, userOwnerPermissions, PosixAclXattrEntry.AclUndefinedId),
+            new PosixAclXattrEntry(AclTag.GroupObject, AclPermissions.All, PosixAclXattrEntry.AclUndefinedId),
+            new PosixAclXattrEntry(AclTag.Mask, groupOwnerPermissions, PosixAclXattrEntry.AclUndefinedId),
+            new PosixAclXattrEntry(AclTag.Other, otherPermissions, PosixAclXattrEntry.AclUndefinedId),
+        ];
+    }
+}
+
+public class UnixFileAccessControl
+{
+    private const string PosixAccessAclXattrName = "system.posix_acl_access";
+    private const string PosixDefaultAclXattrName = "system.posix_acl_default";
+
+    public PosixAcl AccessAcl { get; }
+    public PosixAcl DefaultAcl { get; }
+
+    public UnixFileAccessControl(UnixFileSystemInfo fileSystemInfo)
     {
-        using var aclByteStream = new MemoryStream();
-        using var aclByteWriter = new BinaryWriter(aclByteStream);
-        aclByteWriter.Write(new PosixAclXattrHeader(PosixAclXattrVersion));
-        foreach (var entry in acl) {
-            aclByteWriter.Write(entry);
-        }
-        var result = Native.Syscall.setxattr(path, xattrName, aclByteStream.ToArray());
-        if (result != 0) throw new Exception($"setxattr returned exit code {result}");
+        AccessAcl = new PosixAcl(fileSystemInfo, PosixAccessAclXattrName);
+        DefaultAcl = new PosixAcl(fileSystemInfo, PosixDefaultAclXattrName);
     }
 
     public override string ToString()

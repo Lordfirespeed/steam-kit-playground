@@ -41,6 +41,7 @@ internal static class Config
         // in production, the process owner will be a dedicated service user
         // give `nginx` access to the socket via ACLs
         SocketInfo.GetFileAccessControl()
-            .ModifyUserAccess(new UnixUserInfo("nginx"), AclPermissions.Read | AclPermissions.Write);
+            .AccessAcl
+            .ModifyUser(new UnixUserInfo("nginx"), AclPermissions.Read | AclPermissions.Write);
     }
 }
