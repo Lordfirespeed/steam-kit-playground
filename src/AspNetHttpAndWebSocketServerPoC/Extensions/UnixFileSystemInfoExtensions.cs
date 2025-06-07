@@ -184,9 +184,12 @@ public class PosixAcl
 
     public void ModifyOwnerGroup(AclPermissions permissions)
     {
-        var maskedPermissions = _node.FileAccessPermissions & (FileAccessPermissions.AllPermissions ^ FileAccessPermissions.GroupReadWriteExecute);
-        _node.FileAccessPermissions = maskedPermissions | (FileAccessPermissions)((int)permissions << 3);
-        Refresh();
+        if (_entries.Count == 0) _entries.AddRange(GetImplicitAcl());
+        var (matches, index) = FindEntryIndex(AclTag.GroupObject, PosixAclXattrEntry.AclUndefinedId);
+        Debug.Assert(matches);
+
+        _entries[index] = new PosixAclXattrEntry(AclTag.GroupObject, permissions, PosixAclXattrEntry.AclUndefinedId);
+        Flush();
     }
 
     public void ModifyGroup(UnixGroupInfo group, AclPermissions permissions)
@@ -203,6 +206,16 @@ public class PosixAcl
 
         // replace existing ACL entry
         _entries[index] = new PosixAclXattrEntry(AclTag.User, permissions, (UInt32)group.GroupId);
+        Flush();
+    }
+
+    public void ModifyMask(AclPermissions permissions)
+    {
+        if (_entries.Count == 0) _entries.AddRange(GetImplicitAcl());
+        var (matches, index) = FindEntryIndex(AclTag.Mask, PosixAclXattrEntry.AclUndefinedId);
+        Debug.Assert(matches);
+
+        _entries[index] = new PosixAclXattrEntry(AclTag.Mask, permissions, PosixAclXattrEntry.AclUndefinedId);
         Flush();
     }
 
@@ -242,7 +255,7 @@ public class PosixAcl
 
         return [
             new PosixAclXattrEntry(AclTag.UserObject, userOwnerPermissions, PosixAclXattrEntry.AclUndefinedId),
-            new PosixAclXattrEntry(AclTag.GroupObject, AclPermissions.All, PosixAclXattrEntry.AclUndefinedId),
+            new PosixAclXattrEntry(AclTag.GroupObject, groupOwnerPermissions, PosixAclXattrEntry.AclUndefinedId),
             new PosixAclXattrEntry(AclTag.Mask, groupOwnerPermissions, PosixAclXattrEntry.AclUndefinedId),
             new PosixAclXattrEntry(AclTag.Other, otherPermissions, PosixAclXattrEntry.AclUndefinedId),
         ];
