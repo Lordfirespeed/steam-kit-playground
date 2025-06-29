@@ -16,6 +16,8 @@ var state = new ProgramState();
     Console.WriteLine( "Connected to Steam" );
 }
 
+var runManagerTask = Task.Run(async () => await state.Manager.RunForeverAsync(state.RunToken).SuppressingCancellation());
+
 while ( state.IsRunning ) {
     ReadLine.HistoryEnabled = true;
     var input = ReadLine.Read("> ");
@@ -34,6 +36,7 @@ while ( state.IsRunning ) {
             break;
         case "log-off":
             await new LogOffCommand(state).Run(state.RunToken).SuppressingCancellation();
+            await runManagerTask;
             break;
         case "print-tokens":
             if (!state.HasAuthenticated) throw new InvalidOperationException("Not authenticated");
@@ -42,7 +45,7 @@ while ( state.IsRunning ) {
             break;
         case "disconnect":
             state.SteamClient.Disconnect();
-            await state.Manager.RunForeverAsync(state.RunToken).SuppressingCancellation();
+            await runManagerTask;
             break;
         default:
             Console.WriteLine("Unrecognised command");

@@ -12,6 +12,7 @@ namespace ReAuthenticatePoC;
 public class ProgramState : IDisposable
 {
     private static readonly FileInfo AuthenticationDataFile = new(Path.Join(Environment.CurrentDirectory, "auth.json"));
+    private static readonly FileInfo LicensesDataFile = new(Path.Join(Environment.CurrentDirectory, "licenses.json"));
 
     private readonly CancellationTokenSource _runTokenSource = new();
     public CancellationToken RunToken => _runTokenSource.Token;
@@ -40,6 +41,7 @@ public class ProgramState : IDisposable
         _subscriptions = [
             Manager.Subscribe<SteamClient.DisconnectedCallback>(OnDisconnected),
             Manager.Subscribe<SteamUser.LoggedOffCallback>(OnLoggedOff),
+            Manager.Subscribe<SteamApps.LicenseListCallback>(OnLicenseList),
         ];
     }
 
@@ -54,6 +56,20 @@ public class ProgramState : IDisposable
         Console.WriteLine($"Logged off: {callback.Result}");
         IsLoggedOn = false;
         ClientSteamId = null;
+    }
+
+    private async ValueTask OnLicenseList(SteamApps.LicenseListCallback callback)
+    {
+        Console.WriteLine($"Got license list: {callback.Result}");
+        if (callback.Result is not EResult.OK) return;
+
+        await using var fileStream = LicensesDataFile.OpenWrite();
+        await JsonSerializer.SerializeAsync(
+            fileStream,
+            callback.LicenseList,
+            new JsonSerializerOptions { WriteIndented = true }
+        );
+        Console.WriteLine("Saved license list data");
     }
 
     public async ValueTask Stop()

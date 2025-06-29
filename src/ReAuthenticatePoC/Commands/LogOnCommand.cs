@@ -22,7 +22,7 @@ public class LogOnCommand(ProgramState state)
             AccessToken = state.TokenSet?.RefreshToken,
             ShouldRememberPassword = true,
         });
-        await state.Manager.RunUntil(loggedOnTaskSource.Task, cancellationToken: cancellationToken);
+        await loggedOnTaskSource.Task;
         var callback = loggedOnTaskSource.Task.Result;
         if (callback.Result is not EResult.OK) {
             Console.WriteLine($"Unable to logon to steam: {callback.Result} / {callback.ExtendedResult}");

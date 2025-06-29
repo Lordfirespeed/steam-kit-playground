@@ -13,6 +13,5 @@ public class LogOffCommand(ProgramState state)
 
         Console.WriteLine("Logging off...");
         state.SteamUser.LogOff();
-        await state.Manager.RunForeverAsync(cancellationToken);
     }
 }
