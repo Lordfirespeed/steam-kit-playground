@@ -6,7 +6,7 @@ namespace AspNetEphemeralHttpServerPoC.Controllers;
 
 public class HomeController : ControllerBase
 {
-    [Route("/")]
+    [Route("/api")]
     public IActionResult Index() =>
-        new StandardJsonResult(null);
+        new StandardJsonResult(null) { StatusCode = 401 };
 }

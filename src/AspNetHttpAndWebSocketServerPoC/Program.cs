@@ -3,7 +3,6 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
-using AspNetEphemeralHttpServerPoC;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +11,7 @@ using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateSlimBuilder();
 builder.WebHost.ConfigureKestrel(options => {
-    options.ListenUnixSocket(Config.SocketInfo.FullName);
+    options.ListenAnyIP(5000);
 });
 builder.Services.AddControllers();
 
@@ -22,7 +21,6 @@ app.UseWebSockets(new WebSocketOptions {
     KeepAliveInterval = TimeSpan.FromMinutes(2),
 });
 
-app.MapGet("/", () => "Hello World!");
 app.MapControllers();
 
 var cancellationSource = new CancellationTokenSource();
@@ -33,7 +31,6 @@ var cancel = (PosixSignalContext ctx) => {
 using (PosixSignalRegistration.Create(PosixSignal.SIGINT, cancel))
 using (PosixSignalRegistration.Create(PosixSignal.SIGTERM, cancel)) {
     var runTask = app.RunAsync(cancellationSource.Token);
-    Config.ConfigureSocket();
 
     await runTask;
 }

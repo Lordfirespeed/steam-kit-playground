@@ -9,7 +9,7 @@ namespace AspNetEphemeralHttpServerPoC.Controllers;
 
 public class WebSocketController : ControllerBase
 {
-    [Route("/ws")]
+    [Route("/api/websocket")]
     public async Task Connect()
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
