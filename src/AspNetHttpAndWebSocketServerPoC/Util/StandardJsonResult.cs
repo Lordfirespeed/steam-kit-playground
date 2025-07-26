@@ -1,6 +1,7 @@
 using System;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace AspNetEphemeralHttpServerPoC.Util;
 
@@ -24,12 +25,8 @@ public class StandardJsonResult : JsonResult
         set {
             base.StatusCode = value;
             _wrapper.StatusCode = value;
+            _wrapper.Message = ReasonPhrases.GetReasonPhrase(value);
         }
-    }
-
-    public string? Message {
-        get => _wrapper.Message;
-        set => _wrapper.Message = value;
     }
 
     public string? Detail {
@@ -40,15 +37,19 @@ public class StandardJsonResult : JsonResult
     class ObjectWrapper
     {
         [JsonPropertyName("status")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? StatusCode { get; set; }
 
         [JsonPropertyName("message")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Message { get; set; }
 
         [JsonPropertyName("detail")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Detail { get; set; }
 
         [JsonPropertyName("data")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public object? Data { get; set; }
     }
 }
